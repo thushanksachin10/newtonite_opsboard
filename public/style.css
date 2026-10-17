@@ -9,7 +9,7 @@ button.danger{color:#b42318}
 #app{display:grid;grid-template-columns:200px 1fr;height:100vh}aside{background:#17202e;color:#cfd8e6;padding:16px;display:flex;flex-direction:column;gap:8px}
 aside h2{color:#fff;margin:0 0 8px}aside nav{flex:1;display:flex;flex-direction:column;gap:2px}
 aside nav button{text-align:left;background:none;border:0;color:#cfd8e6;padding:8px;border-radius:6px;display:flex;justify-content:space-between}
-aside nav button.on,aside nav button:hover{background:#26334a;color:#fff}aside nav .n{background:#3a4a68;border-radius:10px;padding:0 7px;font-size:12px}
+aside nav button.on,aside nav button:hover{background:#26334a;color:#fff}aside nav .n{background:#3a4a68;border-radius:10px;padding:0 7px;font-size:12px;white-space:nowrap;align-self:center}
 aside nav .n.hot{background:#d92d20}aside .link{color:#8db0ff;text-align:left}
 main{overflow:auto;padding:16px 20px}header{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center}header input[type=search]{flex:1;min-width:180px}
 #list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
@@ -29,3 +29,37 @@ main{overflow:auto;padding:16px 20px}header{display:flex;gap:8px;margin-bottom:1
 #toasts{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;gap:6px;z-index:10}
 .toast{background:#17202e;color:#fff;padding:8px 14px;border-radius:6px}.toast.bad{background:#b42318}
 @media(max-width:760px){#app{grid-template-columns:1fr}aside{display:none}}
+
+header{position:sticky;top:-16px;z-index:3;background:#f5f6f8;padding:10px 0;margin-top:-10px}
+#list li{border-left:4px solid #e2e6ee;transition:box-shadow .15s}#list li:hover{box-shadow:0 2px 10px #0001}
+#list li.pr-critical{border-left-color:#d92d20}#list li.pr-high{border-left-color:#f79009}#list li.pr-medium{border-left-color:#98a2b3}#list li.pr-low{border-left-color:#32b25f}
+#detail #editBox{margin:8px 0}#detail #editBox textarea{min-height:90px}
+.mobonly{display:none}
+@media(max-width:760px){.mobonly{display:block;margin:8px;width:calc(100% - 16px)}main{padding:10px}#detail{width:100vw}}
+
+/* ---- detail panel: docked as a 3rd column (no overlap with header buttons) ---- */
+#app.has-detail{grid-template-columns:200px minmax(0,1fr) minmax(380px,460px)}
+#detail{position:static;width:auto;height:100vh;overflow:auto;padding:0;background:#fff;border-left:1px solid #d5dae3;box-shadow:none}
+.dhead{position:sticky;top:0;z-index:2;background:#fff;display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-bottom:1px solid #eef0f4}
+.iconbtn{border:0;background:#f1f3f7;border-radius:50%;width:30px;height:30px;padding:0;font-size:14px;line-height:30px;text-align:center}.iconbtn:hover{background:#e2e6ee}
+.dbody{padding:14px 18px 40px}.dbody h3{font-size:20px;line-height:1.25;margin:2px 0 8px}
+.tags{margin-bottom:8px}.desc{color:#344054;white-space:pre-wrap;margin:8px 0 14px}
+.facts{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:0 0 6px;padding:12px;background:#f7f8fa;border-radius:8px}
+.facts dt{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:#6b7587}.facts dd{margin:2px 0 0;font-weight:500;display:flex;align-items:center;gap:6px}
+.av{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:#dbe5ff;color:#1f48a8;font-size:10px;font-weight:700;flex:none}.av.sm{width:26px;height:26px;font-size:10px;background:#e8ecf4;color:#475467}
+.sec{margin-top:18px}.sec h4{margin:0 0 8px;font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:#6b7587}
+#detail .actions{margin:0 0 8px}.pickers{display:flex;gap:10px;flex-wrap:wrap}.pick{display:flex;flex-direction:column;font-size:11px;color:#6b7587;gap:3px;flex:1;min-width:140px}
+#editBox{margin-top:10px;display:flex;flex-direction:column;gap:6px}#editBox input,#detail textarea{width:100%}
+.tl li{display:flex;gap:10px;border-left:0;padding:0 0 14px 0;position:relative}
+.tl li:not(:last-child)::after{content:"";position:absolute;left:12px;top:28px;bottom:2px;width:2px;background:#e4e8ef}
+@media(max-width:1000px){#app.has-detail{grid-template-columns:200px minmax(0,1fr)}
+  #detail{position:fixed;right:0;top:0;bottom:0;width:min(480px,100vw);z-index:6;box-shadow:-8px 0 28px #0003}}
+@media(max-width:760px){#app.has-detail{grid-template-columns:minmax(0,1fr)}#detail{width:100vw}}
+
+/* ---- login polish ---- */
+#login{background:linear-gradient(135deg,#eef2fb,#f5f6f8 60%)}
+#login form{gap:10px;padding:28px}
+#login form h1{margin:0;font-size:28px}
+#login form p{margin:0 0 6px}
+#login form .small{margin-top:10px}
+.chips button{background:#f1f4fb;border-color:#d5ddf0}.chips button:hover{background:#e3eaff;border-color:#2457d6}

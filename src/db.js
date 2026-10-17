@@ -1,4 +1,7 @@
 'use strict';
+const dns = require('node:dns');
+dns.setServers(['8.8.8.8', '1.1.1.1']);
+
 const { MongoClient, ObjectId } = require('mongodb');
 
 async function openDb({ uri = process.env.MONGODB_URI, dbName = process.env.DB_NAME || 'opsboard' } = {}) {

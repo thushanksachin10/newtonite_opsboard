@@ -42,7 +42,7 @@ async function showLogin() {
   const d = await fetch('/api/demo-users').then((r) => r.json()).catch(() => []);
   $('#demo').innerHTML = d.map((u) => `<button type="button" data-e="${u.email}">${esc(u.name)}</button>`).join('');
 }
-$('#demo').onclick = (e) => { if (e.target.dataset.e) { $('#loginForm').email.value = e.target.dataset.e; $('#loginForm').password.value = 'password'; } };
+$('#demo').onclick = (e) => { if (e.target.dataset.e) { $('#loginForm').email.value = e.target.dataset.e; $('#loginForm').password.value = 'password'; $('#loginForm').requestSubmit(); } };
 $('#loginForm').onsubmit = async (e) => { e.preventDefault(); const f = e.target;
   try { const r = await api('POST', '/auth/login', { email: f.email.value, password: f.password.value }); S.token = localStorage.token = r.token; boot(); }
   catch (err) { $('#loginErr').textContent = err.message; } };
@@ -51,7 +51,10 @@ $('#logout').onclick = logout;
 
 // ---------- list ----------
 const VIEWS = [['attention', 'Needs attention'], ['mine', 'My work'], ['unassigned', 'Unassigned'], ['all', 'All items']];
+function syncMobView() { $('#mobView').innerHTML = VIEWS.map(([k, l]) => `<option value="${k}" ${S.view === k ? 'selected' : ''}>${l}</option>`).join(''); }
+$('#mobView').onchange = (e) => { S.view = e.target.value; refreshSummary(); reload(); };
 async function refreshSummary() {
+  syncMobView();
   const s = await api('GET', '/summary').catch(() => null); if (!s) return;
   const cnt = { mine: s.mine, unassigned: s.unassigned, all: Object.values(s.by_status).reduce((a, b) => a + b, 0) };
   $('#views').innerHTML = VIEWS.map(([k, l]) => `<button data-v="${k}" class="${S.view === k ? 'on' : ''}">${l}<span class="n ${k === 'attention' && s.overdue ? 'hot' : ''}">${k === 'attention' ? (s.overdue ? s.overdue + ' overdue' : '') : cnt[k]}</span></button>`).join('');
@@ -60,10 +63,20 @@ $('#views').onclick = (e) => { const b = e.target.closest('button'); if (b) { S.
 function params() {
   const p = new URLSearchParams({ view: S.view, limit: 25 });
   for (const [k, el] of [['team_id', '#fTeam'], ['status', '#fStatus'], ['priority', '#fPrio'], ['q', '#q']]) if ($(el).value) p.set(k, $(el).value);
+  p.set('sort', $('#fSort').value);
   if (S.cursor) p.set('cursor', S.cursor); return p;
 }
 let reqSeq = 0;
-async function reload() { S.cursor = null; S.items = []; await loadPage(); }
+function filtersActive() { return ['#fTeam', '#fStatus', '#fPrio', '#q'].some((e) => $(e).value); }
+async function reload() {
+  S.cursor = null; S.items = [];
+  $('#fSort').disabled = S.view === 'attention'; // "Needs attention" is always ordered by priority
+  $('#fSort').title = S.view === 'attention' ? 'Needs attention is always sorted by priority' : 'Sort order';
+  $('#clearF').classList.toggle('hidden', !filtersActive());
+  $('#loading').classList.remove('hidden'); $('#empty').classList.add('hidden');
+  await loadPage();
+  $('#loading').classList.add('hidden');
+}
 async function loadPage() {
   const seq = ++reqSeq; // ignore out-of-order responses when the user types/filters quickly
   try { const r = await api('GET', '/items?' + params()); if (seq !== reqSeq) return;
@@ -71,16 +84,17 @@ async function loadPage() {
   catch (e) { toast(e.message, true); }
 }
 function renderList(flashId) {
-  $('#list').innerHTML = S.items.map((i) => `<li data-id="${i.id}" class="${S.sel === i.id ? 'sel' : ''} ${flashId === i.id ? 'flash' : ''}">
+  $('#list').innerHTML = S.items.map((i) => `<li data-id="${i.id}" class="pr-${i.priority} ${S.sel === i.id ? 'sel' : ''} ${flashId === i.id ? 'flash' : ''}">
     <div><span class="t">${esc(i.title)}</span></div>
     <div><span class="tag p-${i.priority}">${i.priority}</span><span class="tag s-${i.status}">${i.status.replace('_', ' ')}</span></div>
-    <div class="meta">#${i.id} · ${esc(i.team_name)} · ${i.assignee_name ? esc(i.assignee_name) : '<b>unassigned</b>'}${i.due_at ? ` · <span class="${i.overdue ? 'overdue' : ''}">due ${new Date(i.due_at).toLocaleDateString()}</span>` : ''}${i.approval_status === 'pending' ? ' · ⏳ approval pending' : ''}</div>
+    <div class="meta">${esc(i.team_name)} · ${i.assignee_name ? esc(i.assignee_name) : '<b>unassigned</b>'}${i.due_at ? ` · <span class="${i.overdue ? 'overdue' : ''}">due ${new Date(i.due_at).toLocaleDateString()}</span>` : ''}${i.approval_status === 'pending' ? ' · ⏳ approval pending' : ''}</div>
     <div class="meta">${i.can?.claim ? `<button data-claim="${i.id}" class="primary">Take it</button>` : ''}</div></li>`).join('');
   $('#more').classList.toggle('hidden', !S.cursor); $('#empty').classList.toggle('hidden', S.items.length > 0);
 }
 $('#more').onclick = loadPage;
 let qt; $('#q').oninput = () => { clearTimeout(qt); qt = setTimeout(reload, 250); };
-['#fTeam', '#fStatus', '#fPrio'].forEach((s) => ($(s).onchange = reload));
+['#fTeam', '#fStatus', '#fPrio', '#fSort'].forEach((s) => ($(s).onchange = reload));
+$('#clearF').onclick = () => { ['#fTeam', '#fStatus', '#fPrio', '#q'].forEach((e) => ($(e).value = '')); reload(); };
 $('#list').onclick = (e) => { const c = e.target.closest('[data-claim]'); if (c) { e.stopPropagation(); return claim(c.dataset.claim); }
   const li = e.target.closest('li'); if (li) openDetail(li.dataset.id); };
 
@@ -101,7 +115,8 @@ async function openDetail(id) {
   try { S.detail = await api('GET', `/items/${id}`); S.members = await api('GET', `/teams/${S.detail.item.team_id}/members`).catch(() => []); renderDetail(); renderList(); }
   catch (e) { toast(e.message, true); closeDetail(); }
 }
-function closeDetail() { S.sel = null; S.detail = null; $('#detail').classList.add('hidden'); renderList(); }
+function closeDetail() { S.sel = null; S.detail = null; $('#detail').classList.add('hidden'); $('#app').classList.remove('has-detail'); renderList(); }
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && S.sel && !$('#newDlg').open) closeDetail(); });
 function evText(e) { const d = e.data;
   switch (e.type) {
     case 'created': return 'created this item';
@@ -112,25 +127,45 @@ function evText(e) { const d = e.data;
     case 'updated': return 'edited ' + Object.entries(d).map(([k, v]) => `${k}${k === 'priority' || k === 'due_at' ? ` ${esc(v.from)} → ${esc(v.to)}` : ''}${v.reason ? ' (' + v.reason + ')' : ''}`).join(', ');
     default: return e.type.replace('_', ' ');
   } }
+const initials = (n) => String(n || '?').split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase();
 function renderDetail() {
-  const { item: i, events } = S.detail, c = i.can, el = $('#detail'); el.classList.remove('hidden');
-  el.innerHTML = `<div class="row"><span class="muted">#${i.id} · ${esc(i.team_name)} · you are <b>${i.role}</b> · v${i.version}</span><button class="link" id="x">✕</button></div>
-  <h3>${esc(i.title)}</h3><p>${esc(i.description) || '<i class="muted">No description</i>'}</p>
-  <div><span class="tag p-${i.priority}">${i.priority}</span><span class="tag s-${i.status}">${i.status.replace('_', ' ')}</span>
-  ${i.approval_required ? `<span class="tag">approval: ${i.approval_status}</span>` : ''} <span class="meta">Owner: <b>${esc(i.assignee_name || 'unassigned')}</b> · reported by ${esc(i.reporter_name)}${i.due_at ? ` · <span class="${i.overdue ? 'overdue' : ''}">due ${new Date(i.due_at).toLocaleString()}</span>` : ''}</span></div>
-  <div class="actions">
-    ${c.claim ? '<button class="primary" data-a="claim">Take it</button>' : ''}
-    ${c.transitions.map((t) => `<button data-a="to" data-to="${t}">→ ${t.replace('_', ' ')}</button>`).join('')}
-    ${c.requestApproval ? '<button data-a="appr" data-act="request">Request approval</button>' : ''}
-    ${c.decideApproval ? '<button class="primary" data-a="appr" data-act="approve">Approve</button><button class="danger" data-a="appr" data-act="reject">Reject</button>' : ''}
-    ${c.edit ? `<select id="prio">${['critical', 'high', 'medium', 'low'].map((p) => `<option ${p === i.priority ? 'selected' : ''}>${p}</option>`).join('')}</select>` : ''}
-    ${c.assign ? `<select id="asg"><option value="">Assign to…</option><option value="none">(unassign)</option>${S.members.filter((m) => m.role !== 'viewer').map((m) => `<option value="${m.id}">${esc(m.name)}</option>`).join('')}</select>` : ''}
-  </div>
-  ${c.comment ? '<textarea id="cm" placeholder="Add a comment…"></textarea><div class="row"><button id="cmBtn">Comment</button></div>' : ''}
-  <h4>History</h4><ul class="tl">${events.map((e) => `<li><b>${esc(e.actor_name || 'system')}</b> ${evText(e)}<div class="meta">${new Date(e.created_at).toLocaleString()}</div></li>`).join('')}</ul>
-  ${S.detail.has_more_events ? '<button class="link" id="olderEv">Load older history</button>' : ''}`;
+  const { item: i, events } = S.detail, c = i.can, el = $('#detail');
+  el.classList.remove('hidden'); $('#app').classList.add('has-detail');
+  const actionBtns = [
+    c.claim ? '<button class="primary" data-a="claim">Take it</button>' : '',
+    ...c.transitions.map((t) => `<button data-a="to" data-to="${t}">→ ${t.replace('_', ' ')}</button>`),
+    c.requestApproval ? '<button data-a="appr" data-act="request">Request approval</button>' : '',
+    c.decideApproval ? '<button class="primary" data-a="appr" data-act="approve">Approve</button><button class="danger" data-a="appr" data-act="reject">Reject</button>' : '',
+    c.edit ? '<button data-a="editform">✎ Edit title / description</button>' : '',
+  ].filter(Boolean).join('');
+  const pickers = [
+    c.edit ? `<label class="pick">Priority<select id="prio">${['critical', 'high', 'medium', 'low'].map((p) => `<option ${p === i.priority ? 'selected' : ''}>${p}</option>`).join('')}</select></label>` : '',
+    c.assign ? `<label class="pick">Assign to<select id="asg"><option value="">Choose…</option><option value="none">(unassign)</option>${S.members.filter((m) => m.role !== 'viewer').map((m) => `<option value="${m.id}">${esc(m.name)}</option>`).join('')}</select></label>` : '',
+  ].join('');
+  el.innerHTML = `<div class="dhead"><span class="muted small">Ref ${i.id.slice(-6)} · ${esc(i.team_name)} · you are <b>${i.role}</b></span><button class="iconbtn" id="x" title="Close (Esc)" aria-label="Close">✕</button></div>
+  <div class="dbody">
+    <h3>${esc(i.title)}</h3>
+    <div class="tags"><span class="tag p-${i.priority}">${i.priority}</span><span class="tag s-${i.status}">${i.status.replace('_', ' ')}</span>${i.approval_required ? `<span class="tag">approval: ${i.approval_status}</span>` : ''}</div>
+    <p class="desc">${esc(i.description) || '<i class="muted">No description</i>'}</p>
+    <dl class="facts">
+      <div><dt>Owner</dt><dd>${i.assignee_name ? `<span class="av">${initials(i.assignee_name)}</span>${esc(i.assignee_name)}` : '<b>Unassigned</b>'}</dd></div>
+      <div><dt>Reported by</dt><dd><span class="av">${initials(i.reporter_name)}</span>${esc(i.reporter_name)}</dd></div>
+      <div><dt>Due</dt><dd class="${i.overdue ? 'overdue' : ''}">${i.due_at ? new Date(i.due_at).toLocaleString() : '—'}</dd></div>
+      <div><dt>Version</dt><dd>v${i.version}</dd></div>
+    </dl>
+    <section class="sec"><h4>Actions</h4>
+      ${actionBtns || pickers ? `<div class="actions">${actionBtns}</div>${pickers ? `<div class="pickers">${pickers}</div>` : ''}` : '<div class="muted small">You have read-only access to this team.</div>'}
+      <div id="editBox" class="hidden"><input id="eTitle" value="${esc(i.title)}" maxlength="200"><textarea id="eDesc">${esc(i.description)}</textarea><div class="row"><button class="link" id="eCancel">Cancel</button><button class="primary" id="eSave">Save changes</button></div></div>
+    </section>
+    ${c.comment ? '<section class="sec"><h4>Comment</h4><textarea id="cm" placeholder="Add a comment…"></textarea><div class="row"><button class="primary" id="cmBtn">Post comment</button></div></section>' : ''}
+    <section class="sec"><h4>History</h4><ul class="tl">${events.map((e) => `<li><span class="av sm">${initials(e.actor_name || 'system')}</span><div><b>${esc(e.actor_name || 'system')}</b> ${evText(e)}<div class="meta">${new Date(e.created_at).toLocaleString()}</div></div></li>`).join('')}</ul>
+    ${S.detail.has_more_events ? '<button class="link" id="olderEv">Load older history</button>' : ''}</section>
+  </div>`;
   $('#x').onclick = closeDetail;
-  el.querySelectorAll('[data-a]').forEach((b) => (b.onclick = () => act(b.dataset)));
+  el.querySelectorAll('[data-a]').forEach((b) => { if (b.dataset.a !== 'editform') b.onclick = () => act(b.dataset); });
+  const eb = el.querySelector('[data-a="editform"]');
+  if (eb) { eb.onclick = () => $('#editBox').classList.toggle('hidden'); $('#eCancel').onclick = () => $('#editBox').classList.add('hidden');
+    $('#eSave').onclick = () => act({ a: 'edit', title: $('#eTitle').value, description: $('#eDesc').value }); }
   if ($('#prio')) $('#prio').onchange = (e) => act({ a: 'prio', v: e.target.value });
   if ($('#asg')) $('#asg').onchange = (e) => e.target.value && act({ a: 'asg', v: e.target.value });
   if ($('#cmBtn')) $('#cmBtn').onclick = () => act({ a: 'cm' });
@@ -142,6 +177,7 @@ async function act(d) {
   try {
     let fresh;
     if (d.a === 'claim') return claim(i.id);
+    if (d.a === 'edit') fresh = await mutate('PATCH', base, { title: d.title, description: d.description, version: v });
     if (d.a === 'to') fresh = await mutate('POST', base + '/transition', { to: d.to, version: v });
     else if (d.a === 'appr') fresh = await mutate('POST', base + '/approval', { action: d.act, version: v });
     else if (d.a === 'prio') fresh = await mutate('PATCH', base, { priority: d.v, version: v });
@@ -156,9 +192,10 @@ async function act(d) {
 
 // ---------- create ----------
 $('#newBtn').onclick = () => $('#newDlg').showModal();
+$('#cancelNew').onclick = () => { $('#newForm').reset(); $('#newDlg').close(); }; // type=button: skips form validation
 $('#newForm').onsubmit = async (e) => { if (e.submitter?.value !== 'ok') return; const f = e.target;
   const body = { team_id: f.team_id.value, title: f.title.value, description: f.description.value, priority: f.priority.value, approval_required: f.approval_required.checked, due_at: f.due_at.value ? new Date(f.due_at.value).toISOString() : null };
-  try { const it = await mutate('POST', '/items', body); f.reset(); toast('Created #' + it.id); await reload(); refreshSummary(); openDetail(it.id); } catch (err) { toast(err.message, true); } };
+  try { const it = await mutate('POST', '/items', body); f.reset(); toast('Item created'); await reload(); refreshSummary(); openDetail(it.id); } catch (err) { toast(err.message, true); } };
 
 // ---------- live updates + notifications ----------
 function connectStream() {

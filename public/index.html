@@ -10,6 +10,7 @@
     <p class="muted small">Demo (password: <code>password</code>):</p><div id="demo" class="chips"></div></form>
 </div>
 <div id="app" class="hidden">
+  <select id="mobView" class="mobonly"></select>
   <aside>
     <h2>Opsboard</h2>
     <nav id="views"></nav>
@@ -19,13 +20,16 @@
     <header>
       <input id="q" type="search" placeholder="Search title or description…">
       <select id="fTeam"></select><select id="fStatus"></select><select id="fPrio"></select>
+      <select id="fSort" title="Sort order"><option value="recent">Sort: recently updated</option><option value="priority">Sort: highest priority</option></select>
+      <button id="clearF" class="link hidden">Clear filters</button>
       <button id="bell" class="link" title="Notifications">🔔 <span id="unread"></span></button>
       <button id="newBtn" class="primary">+ New item</button>
     </header>
     <div id="banner" class="banner hidden"></div>
+    <div id="loading" class="muted hidden">Loading…</div>
     <ul id="list"></ul>
     <button id="more" class="link hidden">Load more</button>
-    <div id="empty" class="muted hidden">Nothing here. 🎉</div>
+    <div id="empty" class="muted hidden">Nothing matches. Try another view or clear the filters.</div>
   </main>
   <section id="detail" class="hidden"></section>
   <div id="notifs" class="hidden"></div>
@@ -35,6 +39,6 @@
   <textarea name="description" placeholder="What happened and why does it need action?"></textarea>
   <div class="row"><select name="priority"><option>medium</option><option>critical</option><option>high</option><option>low</option></select>
   <input name="due_at" type="datetime-local"><label class="small"><input type="checkbox" name="approval_required"> needs approval to resolve</label></div>
-  <div class="row"><button value="cancel" class="link">Cancel</button><button class="primary" value="ok">Create</button></div></form></dialog>
+  <div class="row"><button type="button" id="cancelNew" class="link">Cancel</button><button class="primary" value="ok">Create</button></div></form></dialog>
 <div id="toasts"></div>
 <script src="app.js"></script></body></html>
