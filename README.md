@@ -4,9 +4,6 @@ A web app that lets teams coordinate operational work reliably: incidents, payme
 
 Built for the Newtonite Software Engineering Challenge. The brief deliberately leaves decisions open, so this README explains not just *what* the system does but *why* it behaves the way it does when users collide, requests are retried, and things fail.
 
-![Work list](docs/list.png)
-![Item detail](docs/detail.png)
-
 ## Highlights
 
 - **Correct under contention.** Two people claiming the same item produce exactly one winner. Two people editing from stale views never silently overwrite each other.
