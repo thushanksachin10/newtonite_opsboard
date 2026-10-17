@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Opsboard</title><link rel="stylesheet" href="style.css"></head>
+<body>
+<div id="login" class="hidden">
+  <form id="loginForm"><h1>Opsboard</h1><p class="muted">Operational work, one place.</p>
+    <input name="email" placeholder="email" autocomplete="username" required>
+    <input name="password" type="password" placeholder="password" autocomplete="current-password" required>
+    <button class="primary">Sign in</button><div id="loginErr" class="err"></div>
+    <p class="muted small">Demo (password: <code>password</code>):</p><div id="demo" class="chips"></div></form>
+</div>
+<div id="app" class="hidden">
+  <aside>
+    <h2>Opsboard</h2>
+    <nav id="views"></nav>
+    <div class="muted small" id="who"></div><button id="logout" class="link">Sign out</button>
+  </aside>
+  <main>
+    <header>
+      <input id="q" type="search" placeholder="Search title or description…">
+      <select id="fTeam"></select><select id="fStatus"></select><select id="fPrio"></select>
+      <button id="bell" class="link" title="Notifications">🔔 <span id="unread"></span></button>
+      <button id="newBtn" class="primary">+ New item</button>
+    </header>
+    <div id="banner" class="banner hidden"></div>
+    <ul id="list"></ul>
+    <button id="more" class="link hidden">Load more</button>
+    <div id="empty" class="muted hidden">Nothing here. 🎉</div>
+  </main>
+  <section id="detail" class="hidden"></section>
+  <div id="notifs" class="hidden"></div>
+</div>
+<dialog id="newDlg"><form method="dialog" id="newForm"><h3>New work item</h3>
+  <select name="team_id" id="nTeam"></select><input name="title" placeholder="Title" required maxlength="200">
+  <textarea name="description" placeholder="What happened and why does it need action?"></textarea>
+  <div class="row"><select name="priority"><option>medium</option><option>critical</option><option>high</option><option>low</option></select>
+  <input name="due_at" type="datetime-local"><label class="small"><input type="checkbox" name="approval_required"> needs approval to resolve</label></div>
+  <div class="row"><button value="cancel" class="link">Cancel</button><button class="primary" value="ok">Create</button></div></form></dialog>
+<div id="toasts"></div>
+<script src="app.js"></script></body></html>
